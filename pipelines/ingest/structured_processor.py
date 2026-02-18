@@ -113,6 +113,8 @@ class StructuredProcessor:
         category: DocumentCategory,
         csv_bytes: bytes,
         column_map: dict[str, str] | None = None,
+        county_name_override: str | None = None,
+        state_abbr_override: str | None = None,
     ) -> list[CountyDocument]:
         """
         Process CSV bytes into CountyDocuments (one per row).
@@ -123,14 +125,16 @@ class StructuredProcessor:
             category: Document category.
             csv_bytes: Raw CSV file bytes.
             column_map: Optional rename map (original_name -> standard_name).
+            county_name_override: If set, use instead of registry (e.g. user upload).
+            state_abbr_override: If set, use instead of registry (e.g. user upload).
 
         Returns:
             List of CountyDocument instances; duplicates removed by row content hash.
         """
         fips = str(fips).strip().zfill(5)
         county = get_county(fips)
-        county_name = county.county_name if county else "Unknown"
-        state_abbr = county.state_abbr if county else ""
+        county_name = county_name_override if county_name_override else (county.county_name if county else "Unknown")
+        state_abbr = state_abbr_override if state_abbr_override else (county.state_abbr if county else "US")
 
         text = self._decode_csv_bytes(csv_bytes)
         try:
