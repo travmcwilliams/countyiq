@@ -40,11 +40,16 @@ class County(BaseModel):
     County registry entry with FIPS, name, state, population, and crawl metadata.
     """
 
+    schema_version: str = Field(default="1.0", description="Schema version for migrations")
     fips: str = Field(..., min_length=5, max_length=5, description="5-digit FIPS code")
     county_name: str = Field(..., min_length=1)
     state_name: str = Field(..., min_length=1)
     state_abbr: str = Field(..., min_length=2, max_length=2)
     population: int | None = Field(None, ge=0, description="Census population (approximate OK)")
+    record_count: dict[str, int] = Field(
+        default_factory=dict,
+        description="Document count per category (e.g. property, demographics)",
+    )
     data_sources: DataSources = Field(default_factory=DataSources)
     crawl_status: CrawlStatus = Field(default_factory=CrawlStatus)
     last_crawled: datetime | None = Field(None, description="ISO timestamp of last crawl or null")

@@ -74,12 +74,19 @@ def _county_from_dict(obj: dict) -> County:
         except ValueError:
             last_crawled = None
 
+    schema_version = str(obj.get("schema_version", "1.0"))
+    record_count = obj.get("record_count")
+    if not isinstance(record_count, dict):
+        record_count = {}
+
     return County(
+        schema_version=schema_version,
         fips=fips,
         county_name=county_name,
         state_name=state_name,
         state_abbr=state_abbr,
         population=population,
+        record_count=record_count,
         data_sources=ds,
         crawl_status=cs,
         last_crawled=last_crawled,
@@ -148,6 +155,58 @@ def update_crawl_status(fips: str, category: str, status: str) -> None:
             _save_raw(raw)
             _CACHE = None
             logger.info("Updated crawl_status for FIPS {} category {} -> {}", fips, category, status)
+            return
+
+    logger.warning("County FIPS {} not found in registry", fips)
+
+
+def update_county_population(fips: str, population: int) -> None:
+    """
+    Update population for the given county in the registry JSON.
+
+    Args:
+        fips: 5-digit county FIPS code.
+        population: Census population count (non-negative).
+    """
+    fips = str(fips).strip().zfill(5)
+    if population < 0:
+        raise ValueError("population must be non-negative")
+
+    raw = _load_raw()
+    counties_list = raw.get("counties") or []
+    for item in counties_list:
+        if str(item.get("fips", "")).strip().zfill(5) == fips:
+            item["population"] = population
+            raw["counties"] = counties_list
+            _save_raw(raw)
+            _CACHE = None
+            logger.info("Updated population for FIPS {} -> {}", fips, population)
+            return
+
+    logger.warning("County FIPS {} not found in registry", fips)
+
+
+def update_county_record_count(fips: str, category: str, count: int) -> None:
+    """
+    Update record_count for the given county and category in the registry JSON.
+
+    Args:
+        fips: 5-digit county FIPS code.
+        category: Document category (e.g. demographics, property).
+        count: Number of documents for that category.
+    """
+    fips = str(fips).strip().zfill(5)
+    raw = _load_raw()
+    counties_list = raw.get("counties") or []
+    for item in counties_list:
+        if str(item.get("fips", "")).strip().zfill(5) == fips:
+            if "record_count" not in item or not isinstance(item["record_count"], dict):
+                item["record_count"] = {}
+            item["record_count"][category] = count
+            raw["counties"] = counties_list
+            _save_raw(raw)
+            _CACHE = None
+            logger.debug("Updated record_count for FIPS {} category {} -> {}", fips, category, count)
             return
 
     logger.warning("County FIPS {} not found in registry", fips)
