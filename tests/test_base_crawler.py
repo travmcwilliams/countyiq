@@ -159,6 +159,47 @@ class TestBaseCrawler:
 
     @patch("crawlers.base_crawler.BaseCrawler._check_robots")
     @patch("crawlers.base_crawler.BaseCrawler._enforce_rate_limit")
+    def test_fetch_pdf_returns_bytes_when_content_type_pdf(
+        self,
+        mock_rate_limit: MagicMock,
+        mock_robots: MagicMock,
+    ) -> None:
+        """Test fetch_pdf returns bytes when response Content-Type is application/pdf."""
+        mock_robots.return_value = True
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.headers = {"Content-Type": "application/pdf"}
+        mock_response.content = b"%PDF-1.4 fake pdf bytes"
+        mock_response.raise_for_status = Mock()
+
+        crawler = StubCrawler(fips="01001", category=DocumentCategory.property)
+        crawler.session.get = Mock(return_value=mock_response)
+
+        result = crawler.fetch_pdf("https://example.com/doc.pdf")
+        assert result == b"%PDF-1.4 fake pdf bytes"
+
+    @patch("crawlers.base_crawler.BaseCrawler._check_robots")
+    @patch("crawlers.base_crawler.BaseCrawler._enforce_rate_limit")
+    def test_fetch_pdf_returns_none_when_not_pdf(
+        self,
+        mock_rate_limit: MagicMock,
+        mock_robots: MagicMock,
+    ) -> None:
+        """Test fetch_pdf returns None when Content-Type is not PDF."""
+        mock_robots.return_value = True
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.headers = {"Content-Type": "text/html"}
+        mock_response.raise_for_status = Mock()
+
+        crawler = StubCrawler(fips="01001", category=DocumentCategory.property)
+        crawler.session.get = Mock(return_value=mock_response)
+
+        result = crawler.fetch_pdf("https://example.com/page.html")
+        assert result is None
+
+    @patch("crawlers.base_crawler.BaseCrawler._check_robots")
+    @patch("crawlers.base_crawler.BaseCrawler._enforce_rate_limit")
     def test_fetch_retry_on_503(
         self,
         mock_rate_limit: MagicMock,

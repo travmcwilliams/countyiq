@@ -191,6 +191,27 @@ class BaseCrawler(ABC):
                     return None
         return None
 
+    def fetch_pdf(self, url: str, **kwargs: Any) -> bytes | None:
+        """
+        Fetch a URL and return raw bytes if response is PDF.
+        Uses same robots.txt, rate limiting, and retry logic as fetch().
+
+        Args:
+            url: URL to fetch (absolute).
+            **kwargs: Additional arguments to pass to requests.get.
+
+        Returns:
+            PDF bytes if Content-Type is application/pdf; None otherwise or on failure.
+        """
+        response = self.fetch(url, **kwargs)
+        if not response:
+            return None
+        content_type = (response.headers.get("Content-Type") or "").lower()
+        if "application/pdf" not in content_type:
+            logger.warning("fetch_pdf: URL did not return PDF (Content-Type: {})", content_type)
+            return None
+        return response.content
+
     def _source_url_hash(self, source_url: str | None) -> str:
         """Generate hash of source_url for idempotency check."""
         if not source_url:
