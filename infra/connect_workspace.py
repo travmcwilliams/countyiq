@@ -41,3 +41,20 @@ def get_ml_client() -> MLClient:
         resource_group_name=RESOURCE_GROUP,
         workspace_name=WORKSPACE_NAME,
     )
+
+
+if __name__ == "__main__":
+    """Test workspace connection when run as python -m infra.connect_workspace."""
+    try:
+        client = get_ml_client()
+        ws = client.workspaces.get(WORKSPACE_NAME)
+        print("Workspace connection OK.")
+        print(f"  Workspace: {ws.name}")
+        print(f"  Resource group: {RESOURCE_GROUP}")
+        print(f"  Location: {ws.location}")
+    except ValueError as e:
+        print(f"Config error: {e}")
+        raise
+    except Exception as e:
+        print(f"Connection failed: {e}")
+        raise
