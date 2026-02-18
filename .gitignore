@@ -1,16 +1,3 @@
-# CountyIQ .gitignore — production Python / Azure ML
-
-# Virtual environment
-.venv/
-venv/
-env/
-
-# Environment and secrets (never commit keys)
-.env
-.env.local
-.env.*.local
-*.pem
-
 # Python
 __pycache__/
 *.py[cod]
@@ -33,26 +20,51 @@ wheels/
 .installed.cfg
 *.egg
 
-# MLflow
-mlruns/
-mlartifacts/
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
 
 # IDE
-.idea/
 .vscode/
+.idea/
 *.swp
 *.swo
+*~
+
+# Environment variables
+.env
+.env.local
+
+# Data
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# Logs
+*.log
+logs/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Data (schemas and configs only in repo)
-/data/raw/
-/data/processed/
-*.csv
-*.parquet
-
-# Azure / local
+# Azure
 .azure/
-*.log
+
+# Secrets
+secrets/
+*.pem
+*.key

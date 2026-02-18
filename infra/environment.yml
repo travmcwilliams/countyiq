@@ -1,0 +1,9 @@
+# Azure ML Environment - reproducible Python 3.12 environment for CountyIQ
+# DP-100: Environments - Reproducible runtime (conda + image) for training and inference
+# Schema: https://azuremlschemas.azureedge.net/latest/environment.schema.json
+$schema: https://azuremlschemas.azureedge.net/latest/environment.schema.json
+name: countyiq-env
+description: CountyIQ Python 3.12 environment with all project dependencies
+# DP-100: Environment - Base image for consistent OS and system libs
+image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04:latest
+conda_file: conda_dependencies.yml

@@ -1,0 +1,28 @@
+# Conda dependencies for Azure ML environment (Python 3.12)
+# Referenced by infra/environment.yml; used for reproducible runs
+# DP-100: Environment - Conda defines Python version and pip packages
+name: countyiq
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.12
+  - pip
+  - pip:
+    - fastapi>=0.104.0
+    - uvicorn[standard]>=0.24.0
+    - pydantic>=2.5.0
+    - pydantic-settings>=2.1.0
+    - loguru>=0.7.0
+    - pandas>=2.1.0
+    - numpy>=1.26.0
+    - pyarrow>=14.0.0
+    - beautifulsoup4>=4.12.0
+    - requests>=2.31.0
+    - openai>=1.3.0
+    - anthropic>=0.39.0
+    - azure-identity>=1.15.0
+    - azure-ai-ml>=1.14.0
+    - python-dotenv>=1.0.0
+    - mlflow
+    - scikit-learn

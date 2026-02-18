@@ -1,0 +1,17 @@
+# Azure ML Workspace connection config (SDK v2)
+# Values are loaded from environment variables via infra/connect_workspace.py (python-dotenv).
+# DP-100: Workspace - Top-level container for experiments, compute, models, datasets
+# ARCH: Single workspace per env; connection via MLClient in Python
+
+# Subscription and tenant (used by connect_workspace.py; can be overridden in .env)
+subscription_id: "b094e7ca-556e-47b0-b604-c6a435139129"
+tenant_id: "8ad254d8-6edb-4086-8512-380bf17d8aed"
+
+# Load from .env: AZURE_ML_WORKSPACE_NAME, AZURE_RESOURCE_GROUP
+workspace:
+  name: ${AZURE_ML_WORKSPACE_NAME}
+  resource_group: ${AZURE_RESOURCE_GROUP}
+  location: eastus
+
+# DP-100: Datastores - Default blob store for workspace is created with workspace
+# DP-100: Experiments - Grouping of runs; created under this workspace

@@ -1,0 +1,11 @@
+# Azure ML Compute - CPU cluster for training and batch jobs
+# Values can be overridden via .env; cluster name loaded in code via python-dotenv if needed
+# DP-100: Compute target - Attached compute for running training/inference jobs
+# DP-100: Cluster autoscale - min 0 scales to zero when idle to reduce cost
+$schema: https://azuremlschemas.azureedge.net/latest/amlCompute.schema.json
+name: cpu-cluster
+type: amlcompute
+size: Standard_DS3_v2
+min_instances: 0
+max_instances: 4
+idle_time_before_scale_down: 120

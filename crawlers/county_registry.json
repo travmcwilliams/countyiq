@@ -1,0 +1,27 @@
+{
+  "counties": [
+    {
+      "fips": "01001",
+      "name": "Autauga County",
+      "state": "AL",
+      "state_name": "Alabama",
+      "property_url": "https://example.com/autauga/property",
+      "legal_url": "https://example.com/autauga/legal",
+      "demographics_url": "https://example.com/autauga/demographics"
+    },
+    {
+      "fips": "01003",
+      "name": "Baldwin County",
+      "state": "AL",
+      "state_name": "Alabama",
+      "property_url": "https://example.com/baldwin/property",
+      "legal_url": "https://example.com/baldwin/legal",
+      "demographics_url": "https://example.com/baldwin/demographics"
+    }
+  ],
+  "metadata": {
+    "last_updated": "2026-02-18",
+    "total_counties": 2,
+    "source": "CountyIQ Registry"
+  }
+}

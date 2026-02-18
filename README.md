@@ -1,20 +1,71 @@
 # CountyIQ
 
-RAG SaaS platform for US county data: property, legal, demographics, permits, zoning, courts, tax records — served via conversational AI.
+Production-grade RAG SaaS platform that crawls, indexes, and serves US county data (property, legal, demographics, permits, zoning, courts, tax records) and user-uploaded documents through a conversational AI interface.
 
-- **Stack:** Azure ML, Azure OpenAI + Claude, Azure AI Search, FastAPI, Python 3.12
-- **Repo:** https://github.com/travmcwilliams/countyiq
+## Project Structure
+
+```
+countyiq/
+├── .github/workflows/   # CI/CD (GitHub Actions)
+├── api/                 # FastAPI application and route handlers
+│   └── routers/
+├── crawlers/            # Web crawling logic (one subfolder per data category)
+│   ├── property/
+│   ├── legal/
+│   ├── demographics/
+│   ├── permits/
+│   ├── zoning/
+│   ├── courts/
+│   └── tax/
+├── data/                # Schemas and configs only (no raw data committed)
+│   ├── raw/
+│   └── processed/
+├── evaluation/          # Accuracy and groundedness evaluation
+│   └── accuracy/
+├── infra/               # Azure ML workspace, compute, environment YAMLs
+├── monitoring/          # Drift detection and performance monitoring
+├── pipelines/           # Azure ML pipeline definitions (YAML + Python)
+│   ├── ingest/
+│   ├── transform/
+│   └── index/
+├── rag/                 # Embeddings, retrieval, and prompt logic
+│   ├── embeddings/
+│   ├── retrieval/
+│   └── prompts/
+└── tests/               # Unit and integration tests
+```
 
 ## Setup
 
-```powershell
-cd C:\Projects\countyiq
-.venv\Scripts\Activate.ps1
-pip install -r requirements.txt  # when added
-```
+1. Create a virtual environment:
 
-## Phases
+   ```powershell
+   python -m venv venv
+   .\venv\Scripts\Activate.ps1
+   pip install -r requirements.txt
+   ```
 
-- Phase 0: Problem framing (DONE)
-- Phase 1: Azure ML environment & infrastructure (IN PROGRESS)
-- Phase 2+: Data engineering, EDA, production model, MLOps, RAG, Responsible AI, SaaS
+2. Copy `.env.example` to `.env` and set your keys:
+
+   ```powershell
+   Copy-Item .env.example .env
+   ```
+
+3. Run tests:
+
+   ```powershell
+   pytest tests/
+   ```
+
+## Usage
+
+- **API:** `uvicorn api.main:app --reload`
+- **Crawlers:** Inherit from `crawlers.base_crawler.BaseCrawler`; implement `crawl()`.
+
+## Tech Stack
+
+- Azure (ML Studio, OpenAI, AI Search), Python 3.14, FastAPI, Pydantic, loguru, Anthropic SDK.
+
+## License
+
+Proprietary.
