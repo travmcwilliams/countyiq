@@ -1,0 +1,7 @@
+# CountyIQ — Cursor AI Rules
+
+## DocumentCategory (data/schemas/document.py)
+
+Use the `DocumentCategory` enum for document and crawl categories: property, legal, demographics, permits, zoning, courts, tax, user_upload.
+
+# IMPORTANT: DocumentCategory enum values are lowercase. Use DocumentCategory.property, DocumentCategory.legal, DocumentCategory.tax etc. — NOT DocumentCategory.PROPERTY. Using uppercase will raise AttributeError.
