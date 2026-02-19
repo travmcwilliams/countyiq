@@ -191,10 +191,7 @@ class DocumentIndexer:
                         SimpleField(name="category", type=SearchFieldDataType.String, filterable=True, facetable=True),
                         SimpleField(name="source_url", type=SearchFieldDataType.String),
                         SearchField(name="content", type=SearchFieldDataType.String, searchable=True),
-                        SimpleField(
-                            name="embedding",
-                            type=SearchFieldDataType.Collection(SearchFieldDataType.Single),
-                        ),
+                        # Note: Embedding field removed for basic index - will use keyword search only
                         SimpleField(name="metadata", type=SearchFieldDataType.String),
                         SimpleField(name="created_at", type=SearchFieldDataType.DateTimeOffset, filterable=True),
                     ],
@@ -209,7 +206,19 @@ class DocumentIndexer:
         """Convert CountyDocument to Azure AI Search document format."""
         content = doc.processed_content if doc.processed_content else doc.raw_content
 
-        return {
+        # Format datetime for Azure AI Search (requires timezone-aware ISO format)
+        created_at_str = None
+        if doc.created_at:
+            # Ensure timezone-aware datetime
+            if doc.created_at.tzinfo is None:
+                from datetime import timezone
+                created_at = doc.created_at.replace(tzinfo=timezone.utc)
+            else:
+                created_at = doc.created_at
+            # Format as ISO 8601 with timezone
+            created_at_str = created_at.isoformat()
+        
+        doc_dict = {
             "id": str(doc.id),
             "fips": doc.fips,
             "county_name": doc.county_name,
@@ -217,10 +226,22 @@ class DocumentIndexer:
             "category": doc.category.value if hasattr(doc.category, "value") else str(doc.category),
             "source_url": doc.source_url or "",
             "content": content or "",
-            "embedding": doc.embedding or [],
             "metadata": json.dumps(doc.metadata) if doc.metadata else "{}",
-            "created_at": doc.created_at.isoformat() if doc.created_at else None,
+            "created_at": created_at_str,
         }
+        
+        # Only include embedding if index supports it (has vector search config)
+        # Check if index has embedding field by trying to get index definition
+        try:
+            index_def = self._index_client.get_index(self.index_name)
+            embedding_fields = [f.name for f in index_def.fields if hasattr(f, 'vector_search_dimensions') and f.vector_search_dimensions]
+            if "embedding" in embedding_fields and doc.embedding:
+                doc_dict["embedding"] = doc.embedding
+        except Exception:
+            # Index might not exist yet or doesn't support embeddings - skip embedding field
+            pass
+        
+        return doc_dict
 
     def index(self, documents: list[CountyDocument]) -> IndexResult:
         """

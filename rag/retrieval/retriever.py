@@ -100,21 +100,49 @@ class Retriever:
 
         # DP-100: Hybrid search - Combining vector similarity and keyword search
         try:
-            # Vector search
-            vector_query = VectorizedQuery(
-                vector=query_embedding,
-                k_nearest_neighbors=top_k,
-                fields="embedding",
-            )
-
-            # Hybrid search: vector + keyword
-            results = self._search_client.search(
-                search_text=query,  # Keyword search
-                vector_queries=[vector_query],  # Vector search
-                filter=filter_expr,
-                top=top_k,
-                select=["id", "fips", "county_name", "category", "content", "source_url", "metadata"],
-            )
+            # Check if index supports vector search by checking for embedding field
+            try:
+                from azure.search.documents.indexes import SearchIndexClient
+                from azure.core.credentials import AzureKeyCredential
+                import os
+                
+                index_client = SearchIndexClient(
+                    endpoint=os.getenv("AZURE_SEARCH_ENDPOINT", ""),
+                    credential=AzureKeyCredential(os.getenv("AZURE_SEARCH_API_KEY", "")),
+                )
+                index_def = index_client.get_index(self.index_name)
+                has_vector_field = any(
+                    hasattr(f, 'vector_search_dimensions') and f.vector_search_dimensions
+                    for f in index_def.fields
+                    if f.name == "embedding"
+                )
+            except Exception:
+                has_vector_field = False
+            
+            # Try hybrid search if vector field exists, otherwise keyword-only
+            if has_vector_field and query_embedding:
+                vector_query = VectorizedQuery(
+                    vector=query_embedding,
+                    k_nearest_neighbors=top_k,
+                    fields="embedding",
+                )
+                # Hybrid search: vector + keyword
+                results = self._search_client.search(
+                    search_text=query,  # Keyword search
+                    vector_queries=[vector_query],  # Vector search
+                    filter=filter_expr,
+                    top=top_k,
+                    select=["id", "fips", "county_name", "category", "content", "source_url", "metadata"],
+                )
+            else:
+                # Keyword-only search (fallback when vector search not available)
+                logger.debug("Using keyword-only search (vector search not available)")
+                results = self._search_client.search(
+                    search_text=query,  # Keyword search only
+                    filter=filter_expr,
+                    top=top_k,
+                    select=["id", "fips", "county_name", "category", "content", "source_url", "metadata"],
+                )
 
             retrieved_docs: list[RetrievedDocument] = []
             for result in results:
