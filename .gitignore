@@ -68,3 +68,6 @@ Thumbs.db
 secrets/
 *.pem
 *.key
+
+# MLflow local
+mlflow.db
