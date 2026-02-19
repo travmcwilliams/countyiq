@@ -1,60 +1,54 @@
 """
-Azure ML workspace connection using SDK v2.
-Loads configuration from environment variables via python-dotenv.
+Azure ML workspace connection utilities.
+Provides MLClient for Azure ML SDK v2 operations.
+# DP-100: ML Client - Connecting to Azure ML workspace for job submission and model registration.
 """
 
-from pathlib import Path
-
-from dotenv import load_dotenv
 import os
+from typing import Any
 
-# Load .env from project root (parent of infra/)
-_env_path = Path(__file__).resolve().parent.parent / ".env"
-load_dotenv(dotenv_path=_env_path)
-
-# DP-100: Workspace connection - MLClient is the SDK v2 entry point for workspace
 from azure.ai.ml import MLClient
 from azure.identity import DefaultAzureCredential
+from loguru import logger
 
-# Required env vars (set in .env from .env.example)
+# Azure configuration from environment or defaults
 SUBSCRIPTION_ID = os.getenv("AZURE_SUBSCRIPTION_ID", "b094e7ca-556e-47b0-b604-c6a435139129")
-TENANT_ID = os.getenv("AZURE_TENANT_ID", "8ad254d8-6edb-4086-8512-380bf17d8aed")
-WORKSPACE_NAME = os.getenv("AZURE_ML_WORKSPACE_NAME", "")
-RESOURCE_GROUP = os.getenv("AZURE_RESOURCE_GROUP", "")
+RESOURCE_GROUP = os.getenv("AZURE_RESOURCE_GROUP", "countyiq-rg")
+WORKSPACE_NAME = os.getenv("AZURE_ML_WORKSPACE_NAME", "countyiq-workspace")
+
+_ml_client: MLClient | None = None
 
 
 def get_ml_client() -> MLClient:
     """
-    Return an MLClient connected to the Azure ML workspace.
-    Uses DefaultAzureCredential (CLI, managed identity, or env auth).
+    Get or create Azure ML Client (singleton).
+
+    Returns:
+        MLClient instance connected to Azure ML workspace.
     """
-    if not WORKSPACE_NAME or not RESOURCE_GROUP:
-        raise ValueError(
-            "Set AZURE_ML_WORKSPACE_NAME and AZURE_RESOURCE_GROUP in .env"
-        )
-    # DP-100: Authentication - DefaultAzureCredential supports CLI, MI, service principal
-    credential = DefaultAzureCredential()
-    # DP-100: ML Client - Connects to workspace for jobs, models, data, compute
-    return MLClient(
-        credential=credential,
-        subscription_id=SUBSCRIPTION_ID,
-        resource_group_name=RESOURCE_GROUP,
-        workspace_name=WORKSPACE_NAME,
-    )
+    global _ml_client
 
+    if _ml_client is None:
+        try:
+            # DP-100: Authentication - Using DefaultAzureCredential for Azure ML access
+            credential = DefaultAzureCredential()
 
-if __name__ == "__main__":
-    """Test workspace connection when run as python -m infra.connect_workspace."""
-    try:
-        client = get_ml_client()
-        ws = client.workspaces.get(WORKSPACE_NAME)
-        print("Workspace connection OK.")
-        print(f"  Workspace: {ws.name}")
-        print(f"  Resource group: {RESOURCE_GROUP}")
-        print(f"  Location: {ws.location}")
-    except ValueError as e:
-        print(f"Config error: {e}")
-        raise
-    except Exception as e:
-        print(f"Connection failed: {e}")
-        raise
+            # DP-100: ML Client - Initializing connection to Azure ML workspace
+            _ml_client = MLClient(
+                credential=credential,
+                subscription_id=SUBSCRIPTION_ID,
+                resource_group_name=RESOURCE_GROUP,
+                workspace_name=WORKSPACE_NAME,
+            )
+
+            logger.info(
+                "Connected to Azure ML workspace: {} (subscription: {}, resource group: {})",
+                WORKSPACE_NAME,
+                SUBSCRIPTION_ID,
+                RESOURCE_GROUP,
+            )
+        except Exception as e:
+            logger.error("Failed to connect to Azure ML workspace: {}", e)
+            raise
+
+    return _ml_client

@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 
-from .routers import demographics, legal, property, search
+from .routers import demographics, legal, property, search, upload
 
 # Configure loguru
 logger.add("logs/api.log", rotation="1 day", retention="7 days")
@@ -39,6 +39,7 @@ app.include_router(property.router, prefix="/api/v1/property", tags=["property"]
 app.include_router(legal.router, prefix="/api/v1/legal", tags=["legal"])
 app.include_router(demographics.router, prefix="/api/v1/demographics", tags=["demographics"])
 app.include_router(search.router, prefix="/api/v1/search", tags=["search"])
+app.include_router(upload.router, prefix="/api/v1/upload", tags=["upload"])
 
 
 @app.get("/")
