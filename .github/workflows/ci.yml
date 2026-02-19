@@ -1,19 +1,85 @@
-# CountyIQ CI workflow
+# CountyIQ CI — test, lint, crawl health
+# DP-100: CI/CD for ML pipelines - Automated testing and pipeline health checks.
+
 name: CI
+
 on:
   push:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
+
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.14"
+          python-version: "3.12"
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: ${{ runner.os }}-pip-
       - name: Install dependencies
-        run: pip install -r requirements.txt
-      - name: Run tests
-        run: pytest tests/ -v
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Test with pytest
+        run: python -m pytest tests/ -v --tb=short
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-lint-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: ${{ runner.os }}-pip-lint-
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt flake8 mypy
+      - name: Lint with flake8
+        run: flake8 . --count --max-line-length=120 --extend-ignore=E203,W503 || true
+      - name: Type check with mypy
+        run: mypy . --ignore-missing-imports || true
+
+  crawl-health:
+    runs-on: ubuntu-latest
+    needs: [test]
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Crawl health summary
+        id: health
+        run: python scripts/crawl_health_summary.py > health_report.txt 2>&1; cat health_report.txt
+      - name: Comment PR with crawl health
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.existsSync('health_report.txt') ? fs.readFileSync('health_report.txt', 'utf8') : 'No report';
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '## Crawl health summary\n\n```\n' + report + '\n```'
+            });
