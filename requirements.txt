@@ -47,6 +47,7 @@ distlib==0.4.0
 distro==1.9.0
 docker==7.1.0
 docstring_parser==0.17.0
+duckdb==1.1.2
 durationpy==0.10
 fastapi==0.129.0
 filelock==3.24.2

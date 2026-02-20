@@ -5,11 +5,12 @@ Production implementation with robots.txt checking, rate limiting, retries, and 
 
 import hashlib
 import json
+import os
 import time
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 from urllib.parse import urljoin, urlparse
 from urllib.robotparser import RobotFileParser
 
@@ -86,6 +87,9 @@ class BaseCrawler(ABC):
         # Output paths
         self._raw_dir = Path("data/raw") / self.fips / self.category.value
         self._crawl_log_path = Path("data/raw") / self.fips / "crawl_log.jsonl"
+        
+        # StorageManager (optional - initialized lazily if ADLS credentials available)
+        self._storage_manager: Optional[Any] = None
 
     def _get_domain(self, url: str) -> str:
         """Extract domain from URL for rate limiting and robots.txt."""
@@ -218,46 +222,87 @@ class BaseCrawler(ABC):
             return ""
         return hashlib.md5(source_url.encode()).hexdigest()
 
+    def _get_storage_manager(self) -> Optional[Any]:
+        """Get or initialize StorageManager if ADLS credentials are available."""
+        if self._storage_manager is not None:
+            return self._storage_manager
+        
+        # Try to initialize StorageManager from environment
+        adls_account_name = os.getenv("ADLS_ACCOUNT_NAME")
+        adls_account_key = os.getenv("ADLS_ACCOUNT_KEY")
+        duckdb_path = os.getenv("DUCKDB_PATH", "F:/countyiq/db/countyiq.duckdb")
+        
+        if adls_account_name and adls_account_key:
+            try:
+                from data.storage.storage_manager import StorageManager
+                self._storage_manager = StorageManager(
+                    duckdb_path=duckdb_path,
+                    adls_account_name=adls_account_name,
+                    adls_account_key=adls_account_key,
+                )
+                logger.info("Initialized StorageManager with DuckDB + ADLS")
+            except Exception as e:
+                logger.warning("Failed to initialize StorageManager: {} (falling back to file-based)", e)
+                self._storage_manager = None
+        
+        return self._storage_manager
+
     def save(self, documents: list[CountyDocument]) -> None:
         """
-        Save documents to data/raw/{fips}/{category}/ as JSON files.
-        Idempotent: skips if file with same source_url hash already exists.
+        Save documents using StorageManager (DuckDB + ADLS) if available,
+        otherwise fall back to file-based storage.
+
+        # DP-100: Data management - Hybrid storage: DuckDB + ADLS when configured,
+        file-based fallback for local development.
 
         Args:
             documents: List of CountyDocument to save.
         """
-        self._raw_dir.mkdir(parents=True, exist_ok=True)
-        saved_count = 0
-        skipped_count = 0
+        storage_manager = self._get_storage_manager()
+        
+        if storage_manager:
+            # Use StorageManager (DuckDB + ADLS)
+            result = storage_manager.save(documents)
+            logger.info(
+                "Saved via StorageManager: {} local, {} cloud, {} failed",
+                result.local_saved,
+                result.cloud_saved,
+                result.failed,
+            )
+        else:
+            # Fallback to file-based storage (legacy behavior)
+            self._raw_dir.mkdir(parents=True, exist_ok=True)
+            saved_count = 0
+            skipped_count = 0
 
-        for doc in documents:
-            # Generate filename from source_url hash for idempotency
-            url_hash = self._source_url_hash(doc.source_url)
-            if url_hash:
-                filename = f"{url_hash}.json"
-            else:
-                # Fallback: use document ID
-                filename = f"{doc.id}.json"
+            for doc in documents:
+                # Generate filename from source_url hash for idempotency
+                url_hash = self._source_url_hash(doc.source_url)
+                if url_hash:
+                    filename = f"{url_hash}.json"
+                else:
+                    # Fallback: use document ID
+                    filename = f"{doc.id}.json"
 
-            file_path = self._raw_dir / filename
+                file_path = self._raw_dir / filename
 
-            # Idempotency check: skip if file exists
-            if file_path.exists():
-                logger.debug("Skipping {} (already exists)", file_path)
-                skipped_count += 1
-                continue
+                # Idempotency check: skip if file exists
+                if file_path.exists():
+                    logger.debug("Skipping {} (already exists)", file_path)
+                    skipped_count += 1
+                    continue
 
-            # Save document as JSON
-            with open(file_path, "w", encoding="utf-8") as f:
-                json.dump(doc.model_dump(mode="json"), f, indent=2, ensure_ascii=False, default=str)
-            saved_count += 1
+                # Save document as JSON
+                with open(file_path, "w", encoding="utf-8") as f:
+                    json.dump(doc.model_dump(mode="json"), f, indent=2, ensure_ascii=False, default=str)
+                saved_count += 1
 
-        logger.info("Saved {} documents, skipped {} (idempotent) to {}", 
-                   saved_count, skipped_count, self._raw_dir)
+            logger.info("Saved {} documents, skipped {} (idempotent) to {}", 
+                       saved_count, skipped_count, self._raw_dir)
 
     def log_crawl_record(self, success: bool, record_count: int | None, error: str | None) -> None:
         """
-        Write CrawlRecord to data/raw/{fips}/crawl_log.jsonl.
+        Write CrawlRecord to local JSONL and ADLS (if StorageManager available).
 
         Args:
             success: Whether crawl succeeded.
@@ -274,8 +319,16 @@ class BaseCrawler(ABC):
             record_count=record_count,
             error_message=error,
         )
+        
+        # Save to local JSONL (always)
         with open(self._crawl_log_path, "a", encoding="utf-8") as f:
             f.write(record.model_dump_json() + "\n")
+        
+        # Also save via StorageManager if available
+        storage_manager = self._get_storage_manager()
+        if storage_manager:
+            storage_manager.save_crawl_log([record])
+        
         logger.debug("Logged crawl record: success={}, count={}", success, record_count)
 
     @abstractmethod
