@@ -37,10 +37,11 @@ class DocumentStore:
         if duckdb is None:
             raise ImportError("duckdb is not installed. Install with: pip install duckdb")
         
-        self.db_path = Path(db_path)
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        self.conn = duckdb.connect(str(self.db_path))
+        self.db_path = db_path
+        path_str = str(db_path)
+        if path_str != ":memory:":
+            Path(path_str).parent.mkdir(parents=True, exist_ok=True)
+        self.conn = duckdb.connect(path_str)
         self._ensure_schema()
 
     def _ensure_schema(self) -> None:
@@ -92,9 +93,9 @@ class DocumentStore:
             doc.fips,
             doc.county_name,
             doc.state_abbr,
-            doc.category.value,
+            doc.category,  # Already a string due to use_enum_values=True
             doc.source_url,
-            doc.content_type.value,
+            doc.content_type,  # Already a string due to use_enum_values=True
             doc.raw_content,
             doc.processed_content,
             embedding_json,
@@ -187,14 +188,32 @@ class DocumentStore:
     def mark_synced(self, doc_id: str | UUID) -> None:
         """
         Mark a document as synced to cloud.
+        Uses DELETE + INSERT to avoid DuckDB UPDATE+primary key constraint bug.
 
         Args:
             doc_id: Document ID.
         """
         doc_id_str = str(doc_id)
-        self.conn.execute(
-            "UPDATE documents SET synced_to_cloud = TRUE WHERE id = ?",
+        row = self.conn.execute(
+            "SELECT * FROM documents WHERE id = ?",
             (doc_id_str,),
+        ).fetchone()
+        if not row:
+            return
+        self.conn.execute("DELETE FROM documents WHERE id = ?", (doc_id_str,))
+        # Insert same row with synced_to_cloud = TRUE
+        self.conn.execute(
+            """
+            INSERT INTO documents (
+                id, fips, county_name, state_abbr, category, source_url,
+                content_type, raw_content, processed_content, embedding,
+                metadata, created_at, updated_at, synced_to_cloud
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                row[0], row[1], row[2], row[3], row[4], row[5], row[6],
+                row[7], row[8], row[9], row[10], row[11], row[12], True,
+            ),
         )
 
     def _row_to_document(self, row) -> CountyDocument:
@@ -235,3 +254,9 @@ class DocumentStore:
             "by_category": {cat: count for cat, count in by_category},
             "unsynced_count": unsynced,
         }
+    
+    def close(self) -> None:
+        """Close DuckDB connection."""
+        if hasattr(self, 'conn') and self.conn:
+            self.conn.close()
+            logger.debug("Closed DuckDB connection")

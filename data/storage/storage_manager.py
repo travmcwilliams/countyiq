@@ -106,10 +106,9 @@ class StorageManager:
                 urls = self.cloud_store.upload_documents(docs)
                 cloud_saved = len(urls)
                 
-                # Mark as synced in DuckDB
+                # Mark all successfully uploaded documents as synced
                 for doc in docs:
-                    if doc.id in [url.split("/")[-1].replace(".json", "") for url in urls]:
-                        self.local_store.mark_synced(doc.id)
+                    self.local_store.mark_synced(doc.id)
                 
                 logger.info("Saved {} documents to ADLS", cloud_saved)
             except Exception as e:
@@ -176,6 +175,11 @@ class StorageManager:
             # ADLS doesn't have direct ID lookup, so we'd need to search
             # For now, return None if not in local
             # TODO: Add metadata index for cloud document lookup
+    
+    def close(self) -> None:
+        """Close local DuckDB connection."""
+        if hasattr(self, 'local_store') and self.local_store:
+            self.local_store.close()
 
         return None
 

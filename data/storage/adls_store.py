@@ -72,7 +72,7 @@ class ADLSStore:
             ADLS file path URL.
         """
         container = "raw"
-        file_path = f"{doc.fips}/{doc.category.value}/{doc.id}.json"
+        file_path = f"{doc.fips}/{doc.category}/{doc.id}.json"  # category is already a string
         
         try:
             file_system_client = self.service_client.get_file_system_client(container)
