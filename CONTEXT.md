@@ -8,7 +8,7 @@ plus user-uploaded documents, served through a conversational AI interface.
 Consumer-first, enterprise-ready. 3,235 US counties.
 
 ## Critical Rules
-- ALWAYS work in C:\Projects\countyiq — NEVER C:\Users\AIMLI\countyiq
+- ALWAYS work in F:\Projects\countyiq — NEVER C:\Users\AIMLI\countyiq
 - ALWAYS activate venv first: .\.venv\Scripts\Activate.ps1
 - ALWAYS use PowerShell syntax
 - DocumentCategory enum values are LOWERCASE: .property not .PROPERTY
@@ -42,7 +42,7 @@ Consumer-first, enterprise-ready. 3,235 US counties.
 - Current branch: 2026-02-19-2net (merge to main when stable)
 
 ## MCP Servers (in Cursor Settings → Tools & MCP)
-- filesystem: C:\Projects\countyiq
+- filesystem: F:\Projects\countyiq
 - github: travmcwilliams PAT
 - azure: subscription + tenant IDs
 - claude: Anthropic API key
@@ -85,7 +85,7 @@ Files created but need to be verified in C:\Projects\countyiq:
 - tests/test_middleware.py
 
 ## How To Resume
-1. Open C:\Projects\countyiq in Cursor (File → Open Folder)
+1. Open F:\Projects\countyiq in Cursor (File → Open Folder)
 2. Run: .\.venv\Scripts\Activate.ps1
 3. Run: python -m pytest tests/ -v --tb=short -q
 4. If tests pass, continue Phase 8
@@ -93,7 +93,7 @@ Files created but need to be verified in C:\Projects\countyiq:
 6. Open UI: http://127.0.0.1:8000
 
 ## Next Steps When Resuming
-1. Verify all Phase 8 files are in C:\Projects\countyiq
+1. Verify all Phase 8 files are in F:\Projects\countyiq
 2. Run full test suite — target 190+ tests passing
 3. Open consumer UI at http://127.0.0.1:8000
 4. Commit: git add . && git commit -m "phase8: complete" && git push origin main

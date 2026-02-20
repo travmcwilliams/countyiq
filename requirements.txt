@@ -221,6 +221,7 @@ soupsieve==2.8.3
 SQLAlchemy==2.0.46
 sqlparse==0.5.5
 starlette==0.52.1
+streamlit==1.40.0
 strictyaml==1.7.3
 structlog==25.5.0
 sympy==1.14.0
