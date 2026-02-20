@@ -5,10 +5,12 @@ Hybrid search: vector similarity + keyword search with optional filters.
 """
 
 import os
+import re
 import time
 from typing import Any
 
 from azure.core.credentials import AzureKeyCredential
+from data.schemas.document import DocumentCategory
 from azure.search.documents import SearchClient
 from azure.search.documents.models import VectorizedQuery
 from loguru import logger
@@ -187,23 +189,28 @@ class Retriever:
             logger.error("Retrieval failed: {}", e)
             return []
 
+    # Security: only allow validated values in OData filter to prevent injection
+    _FIPS_PATTERN = re.compile(r"^\d{5}$")
+    _VALID_CATEGORIES = frozenset(e.value for e in DocumentCategory)
+
     def _build_filter(self, fips: str | None, category: str | None) -> str | None:
         """
-        Build OData filter expression.
+        Build OData filter expression. Only validated values are interpolated;
+        raw user input is never used to prevent OData injection.
 
         Args:
-            fips: Optional FIPS filter.
-            category: Optional category filter.
+            fips: Optional FIPS filter (must be 5 digits).
+            category: Optional category filter (must be valid DocumentCategory value).
 
         Returns:
             OData filter string or None.
         """
         filters: list[str] = []
 
-        if fips:
+        if fips and self._FIPS_PATTERN.match(fips):
             filters.append(f"fips eq '{fips}'")
 
-        if category:
+        if category and category in self._VALID_CATEGORIES:
             filters.append(f"category eq '{category}'")
 
         if not filters:
